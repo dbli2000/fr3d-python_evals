@@ -56,8 +56,10 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
     :returns: The geometric discrepancy.
     """
 
-    assert len(ntlist1) == len(ntlist2)
-    assert len(ntlist1) >= 2
+    if len(ntlist1) != len(ntlist2):
+        raise ValueError("Input nucleotide lists (ntlist1 and ntlist2) must have the same length.")
+    if len(ntlist1) < 2:
+        raise ValueError("Input nucleotide lists must contain at least two components.")
 
     # TODO: Should we allow users to pass a tuple too?
     if not isinstance(centers, list):
@@ -87,7 +89,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
         centers2  = []
         rotation2 = []
 
-        for i in xrange(len(ntlist1)):
+        for i in range(len(ntlist1)):
             nt1 = ntlist1[i]
             nt2 = ntlist2[i]
             c = 'base'
@@ -112,7 +114,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
         S = []
         W = []
 
-        for i in xrange(len(ntlist1)):
+        for i in range(len(ntlist1)):
             nt1 = ntlist1[i]
             nt2 = ntlist2[i]
             for c in centers:
@@ -151,7 +153,7 @@ def discrepancy(ntlist1, ntlist2, centers=['base'], base_weights=1.0,
         # loop through the bases and calculate angles between them
         orientationerror = 0
         if 'base' in centers:
-            for i in xrange(len(ntlist1)):
+            for i in range(len(ntlist1)):
                 R1 = ntlist1[i].rotation_matrix
                 R2 = ntlist2[i].rotation_matrix
                 # calculate angle in radians
@@ -179,10 +181,10 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
 
     n = len(centers1)
 
-    assert len(centers2) == n
-    assert len(rotations1) == n
-    assert len(rotations2) == n
-    assert n >= 2
+    if not (len(centers2) == n and len(rotations1) == n and len(rotations2) == n):
+        raise ValueError("All input lists (centers1, centers2, rotations1, rotations2) must have the same length.")
+    if n < 2:
+        raise ValueError("Input lists must contain at least two elements.")
 
     if not angle_weight:
         angle_weight = 1.0
@@ -226,8 +228,8 @@ def matrix_discrepancy(centers1, rotations1, centers2, rotations2,
         discrepancy  = np.sqrt(D1[0]**2 + D1[1]**2 + D1[2]**2 + (angle_weight*ang1)**2)
         discrepancy += np.sqrt(D2[0]**2 + D2[1]**2 + D2[2]**2 + (angle_weight*ang2)**2)
 
-#        factor = 1/(4*np.sqrt(2))    # factor to multiply by discrepancy; faster to precompute?
-
+        # The factor 0.17677669529663687 is 1/(4*sqrt(2)).
+        # This normalization factor is specific to the 2-component discrepancy calculation.
         discrepancy  = discrepancy * 0.17677669529663687
 
     return discrepancy
@@ -250,10 +252,10 @@ def matrix_discrepancy_cutoff(centers1, rotations1, centers2, rotations2, cutoff
 
     n = len(centers1)
 
-    assert len(centers2) == n
-    assert len(rotations1) == n
-    assert len(rotations2) == n
-    assert n >= 2
+    if not (len(centers2) == n and len(rotations1) == n and len(rotations2) == n):
+        raise ValueError("All input lists (centers1, centers2, rotations1, rotations2) must have the same length.")
+    if n < 2:
+        raise ValueError("Input lists must contain at least two elements.")
 
     if not angle_weight:
         angle_weight = [1] * n
@@ -306,8 +308,8 @@ def matrix_discrepancy_cutoff(centers1, rotations1, centers2, rotations2, cutoff
         discrepancy  = np.sqrt(D1[0]**2 + D1[1]**2 + D1[2]**2 + (angle_weight[0]*ang1)**2)
         discrepancy += np.sqrt(D2[0]**2 + D2[1]**2 + D2[2]**2 + (angle_weight[0]*ang2)**2)
 
-#        factor = 1/(4*np.sqrt(2))    # factor to multiply by discrepancy; faster to precompute?
-
+        # The factor 0.17677669529663687 is 1/(4*sqrt(2)).
+        # This normalization factor is specific to the 2-component discrepancy calculation.
         discrepancy  = discrepancy * 0.17677669529663687
 
     return discrepancy

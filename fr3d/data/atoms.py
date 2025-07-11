@@ -33,14 +33,41 @@ class Atom(object):
         self.component_index = component_index
         self.insertion_code = insertion_code
         self.alt_id = alt_id
-        self.x = x
-        self.y = y
-        self.z = z
+        if x is not None and y is not None and z is not None:
+            self._coordinates = np.array([float(x), float(y), float(z)])
+        else:
+            self._coordinates = np.array([0.0, 0.0, 0.0]) # Default or raise error
+            # Consider raising ValueError if coordinates are essential and not provided
+            # For now, defaulting to origin if not provided.
         self.group = group
         self.type = type
         self.name = name
         self.symmetry = symmetry
         self.polymeric = polymeric
+
+    @property
+    def x(self):
+        return self._coordinates[0]
+
+    @x.setter
+    def x(self, value):
+        self._coordinates[0] = float(value)
+
+    @property
+    def y(self):
+        return self._coordinates[1]
+
+    @y.setter
+    def y(self, value):
+        self._coordinates[1] = float(value)
+
+    @property
+    def z(self):
+        return self._coordinates[2]
+
+    @z.setter
+    def z(self, value):
+        self._coordinates[2] = float(value)
 
     def component_unit_id(self):
         """Generate the unit id of the component this atom belongs to.
@@ -84,9 +111,14 @@ class Atom(object):
         ones coordiantes.
         """
 
-        result = np.dot(transform, np.array([self.x, self.y, self.z, 1.0]))
-        x, y, z = result[0:3].T
-        return Atom(x=x, y=y, z=z,
+        original_coords_homogeneous = np.append(self._coordinates, 1.0)
+        transformed_coords_homogeneous = np.dot(transform, original_coords_homogeneous)
+        new_coords = transformed_coords_homogeneous[0:3]
+
+        # Create a new Atom instance, passing individual coordinate components
+        # or allow Atom to be initialized with a numpy array if __init__ is adapted.
+        # For now, sticking to existing x,y,z params for Atom constructor:
+        return Atom(x=new_coords[0], y=new_coords[1], z=new_coords[2],
                     pdb=self.pdb,
                     model=self.model,
                     chain=self.chain,
@@ -106,7 +138,7 @@ class Atom(object):
 
         :returns: A numpy array of the x, y, z coordinates.
         """
-        return np.array([self.x, self.y, self.z])
+        return self._coordinates
 
     def distance(self, atom):
         """Compute the distance between this atom and another atom.

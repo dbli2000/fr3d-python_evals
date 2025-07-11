@@ -3,14 +3,7 @@ on, such as Atoms and Components.
 
 """
 import sys
-
-if sys.version_info[0] < 3:
-    import collections as col
-else:
-    import collections.abc as col
-if sys.version_info[0] < 3:
-    from itertools import ifilter as filter    # old name
-
+import collections.abc as col # Use collections.abc for Python 3
 import operator as op
 
 import numpy as np
@@ -59,22 +52,24 @@ class EntitySelector(object):
         :kwargs: Keyword arguments for filtering and sorting.
         """
 
-        filtered = iter(self.obj)
+        # In Python 3, filter is already an iterator, so no need for ifilter.
+        # The 'filtered' variable will be an iterator.
+        current_iterator = iter(self.obj)
         for key, value in self.options.items():
             if key == '_':
-                filtered = filter(value, filtered)
+                current_iterator = filter(value, current_iterator)
             elif callable(value):
-                filtered = filter(self.__callable_filter__(key, value),
-                                      filtered)
+                current_iterator = filter(self.__callable_filter__(key, value),
+                                          current_iterator)
             elif isinstance(value, (list, set, tuple)):
                 func = self.__basic_filter__(key, set(value),
                                              lambda a, b: op.contains(b, a))
-                filtered = filter(func, filtered)
+                current_iterator = filter(func, current_iterator)
             else:
                 func = self.__basic_filter__(key, value, op.eq)
-                filtered = filter(func, filtered)
+                current_iterator = filter(func, current_iterator)
 
-        return filtered
+        return current_iterator
 
 
 class AtomProxy(col.MutableMapping):
@@ -99,16 +94,10 @@ class AtomProxy(col.MutableMapping):
 
         self._definitions[name] = atoms
         
-        if sys.version_info[0] < 3:
-            if isinstance(atoms, basestring):
-                self._data[name] = set([atoms])
-            else:
-                self._data[name] = set(atoms)
+        if isinstance(atoms, str):
+            self._data[name] = set([atoms])
         else:
-            if isinstance(atoms, str):
-                self._data[name] = set([atoms])
-            else:
-                self._data[name] = set(atoms)
+            self._data[name] = set(atoms)
 
     def setcenter(self, name, vector):
         """Explicitly set the name and the value of a center.

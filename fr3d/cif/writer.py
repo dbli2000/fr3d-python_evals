@@ -21,13 +21,11 @@ class CifAtom(object):
     5. An additional final field contains the component unit id for each atom.
     """
 
-    def __init__(self, handle, unit_ids=True, protect_lists_of_lists=False):
+    def __init__(self, handle, unit_ids=True):
         self.writer = Writer(handle)
         self.unit_ids = unit_ids
-        self.protect_lists_of_lists = protect_lists_of_lists
 
-
-    def atom_container(self, structure, protect_lists_of_lists):
+    def atom_container(self, structure):
         atoms = DataCategory('atom_site')
         fields = ['group_PDB', 'id', 'type_symbol', 'label_atom_id',
                   'label_alt_id', 'label_comp_id', 'label_asym_id',
@@ -75,26 +73,10 @@ class CifAtom(object):
             except:
                 continue
 
-        if protect_lists_of_lists is True:
-            # Kludge fix for single atom residues.
-            # Handles cases where single atom residues are not handled
-            #     correctly as lists of lists, but as simple lists instead,
-            #     which has downstream implications in units.coordinates.
-            #
-            # Here, we force a fix, using the line-skipping logic from
-            #     units.coordinates to keep the kludge line out of the output
-            #     data.
-            dummy = [ 'loop_foo', 'foo', 'foo', 'foo', 'foo', 'foo', 'foo',
-                        '?', 'foo', 'foo', 'foo', 'foo', 'foo', '?',
-                        '?', '?', '?', '?', '?', '?',
-                        '.', 'foo', 'foo', 'foo', 'foo', 'foo']
-
-            atoms.append(dummy)
-
         return atoms
 
     def __call__(self, structure):
-        atoms = self.atom_container(structure, self.protect_lists_of_lists)
+        atoms = self.atom_container(structure)
         container = DataContainer(structure.pdb)
         container.append(atoms)
         self.writer.writeContainer(container)

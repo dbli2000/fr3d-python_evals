@@ -67,10 +67,10 @@ def besttransformation(set1, set2):
     # we just need to check for reflections and then produce
     # the rotation.  V and Wt are orthonormal, so their det's
     # are +/-1.
-    I = numpy.matrix(numpy.identity(3))
+    I = numpy.identity(3) # Use numpy.ndarray instead of numpy.matrix
     d = numpy.linalg.det(numpy.dot(numpy.transpose(Wt), numpy.transpose(V)))
     if numpy.isclose(d, -1.0):
-        I[2, 2] = d
+        I[2, 2] = d # This modification works fine on an ndarray
 
     # End of the Computation of the optimal rotation matrix
 
@@ -108,10 +108,10 @@ def besttransformation_weighted(set1, set2, weights=[1.0]):
     dev2 = set2 - mean2
     A = numpy.dot(numpy.transpose(dev2), numpy.dot(diagonal, dev1))
     V, diagS, Wt = numpy.linalg.svd(A)
-    I = numpy.matrix(numpy.identity(3))
+    I = numpy.identity(3) # Use numpy.ndarray instead of numpy.matrix
     d = numpy.linalg.det(numpy.dot(numpy.transpose(Wt), numpy.transpose(V)))
     if numpy.isclose(d, -1.0):
-        I[2, 2] = d
+        I[2, 2] = d # This modification works fine on an ndarray
     U = numpy.dot(numpy.dot(numpy.transpose(Wt), I), numpy.transpose(V))
     new1 = numpy.dot(dev1, U)
     new2 = dev2

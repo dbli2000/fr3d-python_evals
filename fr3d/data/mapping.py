@@ -17,22 +17,36 @@
 from fr3d import definitions as defs
 import os
 import sys
+import pkg_resources # Added for robust data file access
 
-if sys.version_info[0] < 3:
-    read_mode = 'rb'
-else:
-    read_mode = 'rt'
+# Python 3 specific read mode
+read_mode = 'rt'
 
 def create_modified_nucleotide_to_parent_mappings():
-    # Read in mapping file from the folder where this program is installed
-    current_path,current_program = os.path.split(os.path.abspath(__file__))
-    filename = os.path.join(current_path,"atom_mappings.txt")
+    # Use pkg_resources to find the data file
+    try:
+        # Assuming 'fr3d' is the package name and 'data/atom_mappings.txt' is the path within the package
+        filename = pkg_resources.resource_filename('fr3d', 'data/atom_mappings.txt')
+    except ImportError:
+        # Fallback for environments where pkg_resources might not work as expected
+        # (e.g., running script directly without full package installation)
+        # This fallback maintains previous behavior but is less robust.
+        current_path, _ = os.path.split(os.path.abspath(__file__))
+        filename = os.path.join(current_path, "atom_mappings.txt")
+        # Consider logging a warning here if relying on fallback.
 
-    #print('mapping.py is being run in path %s' % current_path)
-    #print('mapping.py is trying to open %s' % filename)
+    #print(f'mapping.py is trying to open {filename}')
 
-    with open(filename, read_mode) as fid:
-        lines = fid.readlines()
+    try:
+        with open(filename, read_mode) as fid:
+            lines = fid.readlines()
+    except FileNotFoundError:
+        print(f"Error: mapping.py could not find atom_mappings.txt at {filename}")
+        print("This can happen after installing with 'python setup.py install' with no known fix.")
+        print("Instead, from the directory where setup.py is, use 'python -m pip install .'")
+        # Re-raise or handle as appropriate for the application
+        # For now, to maintain existing behavior of failing somewhat silently if file not found by create_map..
+        raise # Or return empty dicts to prevent downstream errors if that's preferred
 
     modified_atom_map = {}
 

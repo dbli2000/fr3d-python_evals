@@ -10,22 +10,27 @@ import sys
 import numpy as np
 import os
 
-if sys.version_info[0] < 3:
-    from itertools import ifilter as filter # old name
-    from pdbx.reader.PdbxReader import PdbxReader as Reader #If running python 2.7, use pdbx reader 
-else:
-    from pdbx import PdbxReader as Reader #if running in python 3, install mmcif package to deal with reading. ([mmcif_pdbx] will need added to setup.py for this)
+
+from pdbx import PdbxReader as Reader #if running in python 3, install mmcif package to deal with reading. ([mmcif_pdbx] will need added to setup.py for this)
 
 
 from fr3d.data import Atom
 from fr3d.data import Component
 from fr3d.data import Structure
 
+import json
+import os
+
 # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
 # Try this way:
 try:
     # if this .py file exists, it will be used
-    from fr3d.cif.oldStructures import oldStructures
+    # from fr3d.cif.oldStructures import oldStructures # old way
+    # load oldStructures from fr3d/data/old_structures.json
+    current_path, _ = os.path.split(os.path.abspath(__file__))
+    json_path = os.path.join(os.path.dirname(current_path), 'data', 'old_structures.json')
+    with open(json_path, 'r') as f:
+        oldStructures = json.load(f)
 except:
     # otherwise, use an empty list
     oldStructures = []
@@ -204,12 +209,8 @@ class Cif(object):
                             op1 = operator.replace("(", "")
                             op1 = op1.replace(")", "") 
                             startEnd = op1.split('-')
-                            if sys.version_info[0] < 3:
-                                for number in xrange(int(startEnd[0]), int(startEnd[1])+1):
-                                    listOfNumbers.append(number)                                
-                            else:
-                                for number in range(int(startEnd[0]), int(startEnd[1])+1):
-                                    listOfNumbers.append(number)
+                        for number in range(int(startEnd[0]), int(startEnd[1])+1):
+                            listOfNumbers.append(number)
                             for symmetry in listOfNumbers: #Add all of these symmetry operators and then go to the next operator
                                 op = self._operators[str(symmetry)]    
                                 previous_id = [x['id'] for x in assemblies[asym_id]] #avoid applying the same operator twice.
@@ -292,10 +293,7 @@ class Cif(object):
         """Get the structure from the Cif file.
         :returns: The first structure in the cif file.
         """
-        if sys.version_info[0] < 3:
-            pdb = self.data.getName()
-        else: 
-            pdb = self.data.name
+        pdb = self.data.name
         residues = self.__residues__(pdb)
         return Structure(list(residues), pdb=pdb)
 
@@ -331,7 +329,7 @@ class Cif(object):
         if isinstance(chain, (list, tuple, set)):
             chain_compare = ft.partial(op.contains, set(chain))
 
-        pdb = self.data.getName()
+        pdb = self.data.name
         mapping = coll.defaultdict(list)
         for residue in self.__residues__(pdb):
             if chain_compare(residue.chain):
@@ -484,89 +482,63 @@ class Cif(object):
                 )
 
     def __atoms__(self, pdb):
-        # Some old structures need to have processing for the sake of the server and naming conventions. Default to this for these structures.
-        if self.pdb in oldStructures: 
-            if hasattr(self, '_assemblies.values()'):
-                max_operators = max(len(op) for op in list(self._assemblies.values()))
-            else:
-                max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
-            if not max_operators:
-                raise ValueError("Could not find any operators")
-
-            def operator(entry):
-                pdb, atom, number = entry
-                operators = self.operators(atom['label_asym_id'])
-                if not operators:
-                    self.logger.warning("No operator found for %s", atom)
-                    return None
-                if number < len(operators):
-                    return pdb, atom, operators[number]
-                return None
-            atoms = []
-            if sys.version_info[0] < 3:
-                for index in xrange(max_operators):
-                    indexes = it.repeat(index, len(self.atom_site))
-                    pdbs = it.repeat(pdb, len(self.atom_site))
-                    zipped = it.izip(pdbs, self.atom_site, indexes)
-                    with_operators = it.imap(operator, zipped)
-                    filtered = filter(None, with_operators)
-                    atoms.append(it.imap(lambda a: self.__atom__(*a), filtered))
-            else:
-                for index in range(max_operators):
-                    indexes = it.repeat(index, len(self.atom_site))
-                    pdbs = it.repeat(pdb, len(self.atom_site))
-                    zipped = (zip(pdbs, self.atom_site, indexes))
-                    with_operators = list(map(operator, zipped))
-                    filtered = filter(None, with_operators)
-                    atoms.append(map(lambda a: self.__atom__(*a), filtered))
-            return it.chain.from_iterable(atoms)
-        ###########################################################################
-        # Otherwise, this is the default way to handle this 
-        try:
-            max_operators = max(len(op) for op in list(self._assemblies.values()))
-        except:
-            max_operators=1 #if there aren't any operators, there should be one operator applied and it's the identity
+        if not self.atom_site: # Handle cases with no atom_site data
+            return []
 
         if not self._assemblies:
-            if sys.version_info[0] < 3:
-                operators = it.repeat(self.__identity_operator__(), len(self.atom_site))
-                pdbs = it.repeat(pdb, len(self.atom_site))
-                zipped = it.izip(pdbs, self.atom_site, operators)
-                return it.imap(lambda a: self.__atom__(*a), zipped)
-            else:
-                operators = it.repeat(self.__identity_operator__(), len(self.atom_site)) 
-                pdbs = it.repeat(pdb, len(self.atom_site))
-                zipped = list(zip(pdbs, self.atom_site, operators))
-                return list(map(lambda a: self.__atom__(*a), zipped))
+            # If no assemblies, use identity operator for all atoms
+            operators_iter = it.repeat(self.__identity_operator__(), len(self.atom_site))
+            pdbs_iter = it.repeat(pdb, len(self.atom_site))
+            zipped = zip(pdbs_iter, self.atom_site, operators_iter)
+            # self.logger.info("No assemblies found for PDB %s. Using identity operator for all atoms.", pdb)
+            return map(lambda a: self.__atom__(*a), zipped)
 
-        def operator(entry):
-            pdb, atom, number = entry
-            operators = self.operators(atom['label_asym_id'])
-            if not operators:
-                self.logger.warning("No operator found for %s", atom)
-                return None
-            if number < len(operators):
-                return pdb, atom, operators[number]
-            return None
+        try:
+            # Determine the maximum number of operators to iterate through
+            # This ensures all symmetry instances are generated
+            max_operators = max(len(ops) for ops in self._assemblies.values() if ops) if self._assemblies else 1
+        except ValueError: # Handles cases where _assemblies might be empty or contain empty lists
+            max_operators = 1
 
-        atoms = []
-        if sys.version_info[0] < 3:
-            for index in xrange(max_operators):
-                indexes = it.repeat(index, len(self.atom_site))
-                pdbs = it.repeat(pdb, len(self.atom_site))
-                zipped = it.izip(pdbs, self.atom_site, indexes)
-                with_operators = it.imap(operator, zipped)
-                filtered = filter(None, with_operators)
-                atoms.append(it.imap(lambda a: self.__atom__(*a), filtered))
-        else:
-            for index in range(max_operators):
-                indexes = it.repeat(index, len(self.atom_site))
-                pdbs = it.repeat(pdb, len(self.atom_site))
-                zipped = (zip(pdbs, self.atom_site, indexes))
-                with_operators = list(map(operator, zipped))
-                filtered = filter(None, with_operators)
-                atoms.append(map(lambda a: self.__atom__(*a), filtered))
-        return it.chain.from_iterable(atoms)
+        if max_operators == 0 : # if _assemblies has entries but they are all empty lists.
+            max_operators = 1
+
+
+        all_generated_atoms = []
+
+        def get_operator_for_atom_and_index(atom_entry, op_index):
+            # Helper to select the correct operator for an atom at a given operator index
+            # This is the core of applying different symmetry operations
+            asym_id = atom_entry['label_asym_id']
+            operators_for_asym = self.operators(asym_id) # self.operators handles missing asym_id by returning identity
+
+            if op_index < len(operators_for_asym):
+                return operators_for_asym[op_index]
+            # self.logger.debug("Operator index %d out of bounds for asym_id %s in PDB %s. Max operators: %d. Operators for asym: %s",
+            #                    op_index, asym_id, pdb, max_operators, operators_for_asym)
+            return None # Or handle as an error/warning if this state is unexpected
+
+        for op_idx in range(max_operators):
+            generated_atoms_for_operator_set = []
+            for atom_data in self.atom_site:
+                # For each atom in the CIF, and for each operator index up to max_operators,
+                # try to get the specific operator.
+                current_operator = get_operator_for_atom_and_index(atom_data, op_idx)
+
+                if current_operator:
+                    # If an operator is found (i.e., not None), generate the atom
+                    # self.logger.debug("Generating atom for PDB %s, operator index %d, operator_id: %s",
+                    #                   pdb, op_idx, current_operator.get('id', 'N/A'))
+                    generated_atoms_for_operator_set.append(self.__atom__(pdb, atom_data, current_operator))
+                # else:
+                    # self.logger.debug("No operator for atom %s (asym_id %s) at operator index %d in PDB %s. Skipping.",
+                    #                   atom_data.get('id', 'N/A'), atom_data['label_asym_id'], op_idx, pdb)
+
+            all_generated_atoms.extend(generated_atoms_for_operator_set)
+
+        # self.logger.info("Generated %d atom instances for PDB %s across %d operator sets.",
+        #                  len(all_generated_atoms), pdb, max_operators)
+        return it.chain(all_generated_atoms) # Return a single iterator over all generated atoms
 
     def __atom__(self, pdb, atom, symmetry):
         x, y, z = self.__apply_symmetry__(atom, symmetry)
@@ -672,10 +644,7 @@ class Cif(object):
 
     def __block__(self, name):
         block_name = re.sub('^_', '', name)
-        if sys.version_info[0] < 3:
-            block = self.data.getObj(block_name)
-        else: 
-            block = self.data.get_object(block_name)
+        block = self.data.get_object(block_name)
         if not block:
             raise MissingBlockException("Unknown block " + name)
         return block
@@ -698,19 +667,12 @@ class Table(object):
         self.block = block
         self.rows = rows
         
-        if sys.version_info[0] < 3:
-            self.columns = self.block.getItemNameList()
-        else:
-            self.columns = self.block.item_name_list
+        self.columns = self.block.item_name_list
         self.columns = [re.sub('_.+\.', '', name) for name in self.columns]
 
         if self.rows is None:
-            if sys.version_info[0] < 3:
-                length = self.block.getRowCount()
-                self.rows = [self.__row__(index) for index in xrange(length)]
-            else:
-                length = self.block.row_count
-                self.rows = [self.__row__(index) for index in range(length)]
+            length = self.block.row_count
+            self.rows = [self.__row__(index) for index in range(length)]
 
     def column(self, name):
         """Get a column by name"""
@@ -733,10 +695,7 @@ class Table(object):
         to be ordered. The row will be a dict of the form { attribute: value }.
         Each attribute will have the name of the block stripped.
         """
-        if sys.version_info[0] < 3:
-            return dict(list(zip(self.columns, self.block.getRow(number))))
-        else:
-            return dict(list(zip(self.columns, self.block.row_list[number])))
+        return dict(list(zip(self.columns, self.block.row_list[number])))
 
     def __getattr__(self, name):
         """Get the column with the given name.
