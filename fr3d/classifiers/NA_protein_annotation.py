@@ -1818,7 +1818,7 @@ def writeAATwoBaseHTML(allAATwoBaseDictionary,outputHTML,version,aa_part):
         # upload the files to /var/www/html/RNAprotein
 
 #=======================================================================
-
+'''
 """Inputs a list of PDBs of interest to generate super-imposed plots"""
 PDB_List = ['5AJ3']
 PDB_List = ['6hiv']
@@ -1841,37 +1841,32 @@ PDB_List = ['6TPQ']
 PDB_List = ['4KTG']
 PDB_List = ['4KTG']
 PDB_List = ['http://rna.bgsu.edu/rna3dhub/nrlist/download/3.217/3.0A/csv']
+'''
 version = "_3.217_3.0"
-PDB_List = ['4V9F']
+PDB_List = ['9MTY']
 
-
-ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
+# ReadPickleFile = True                  # when true, just read the .pickle file from a previous run
 ReadPickleFile = False                 # when true, just read the .pickle file from a previous run
 
 base_seq_list = ['A']
 base_seq_list = ['DA','DT','DC','DG']  # for DNA
 base_seq_list = ['A','U','C','G']      # for RNA
 
-aa_list = ['HIS']
-aa_list = ['ILE']
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','THR','SER','TYR','TRP','PHE','PRO','CYS','MET']
-aa_list = ['THR']
-aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','PHE','PRO','CYS','MET']
-aa_list = ['HIS']
 aa_list = ['ALA','VAL','ILE','LEU','ARG','LYS','HIS','ASP','GLU','ASN','GLN','SER','TYR','TRP','THR','PHE','PRO','CYS','MET','GLY']
 
 atom_atom_min_distance = 4.5    # minimum atom-atom distance to note an interaction
 base_aa_screen_distance = 18    #
 nt_reference = "C1'"
 aa_reference = "aa_fg"
-
+'''
 hasNoProteinFilename = inputPath % "hasNoProtein.pickle"
 hasNoProteinFilename = hasNoProteinFilename.replace(".cif","")
 try:
     hasNoProtein = pickle.load(open(hasNoProteinFilename,"rb"))
 except:
     hasNoProtein = []
-
+'''
+hasNoProtein = []
 # plot one instance of each of the amino acids, showing the hydrogen atoms added
 PlotAA = True
 PlotAA = False
